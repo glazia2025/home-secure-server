@@ -139,12 +139,14 @@ test("user can onboard a hub over BLE setup, pair a door sensor through the hub 
     .post(`/api/homes/${homeId}/sensors/pair`)
     .set("Authorization", `Bearer ${token}`)
     .send({
-      sensorMacAddress: "11:22:33:44:55:66",
+      sensorMacAddress: "1122334455667788",
       name: "Front Door Frame Sensor",
       type: "contact",
       zone: "Front Door Frame",
     });
   assert.equal(sensorClaimResponse.status, 201);
+  assert.equal(sensorClaimResponse.body.sensor.macAddress, "1122334455667788");
+  assert.equal(sensorClaimResponse.body.sensor.identifierType, "eui64");
   assert.equal(sensorClaimResponse.body.provisioning.sensor.targetHubMacAddress, "AA:BB:CC:DD:EE:FF");
 
   const pendingHomeDetailsResponse = await request(app)
@@ -167,7 +169,7 @@ test("user can onboard a hub over BLE setup, pair a door sensor through the hub 
     .set("x-hub-mac-address", "AA:BB:CC:DD:EE:FF")
     .set("x-hub-secret", currentHub!.deviceSecret)
     .send({
-      sensorMacAddress: "11:22:33:44:55:66",
+      sensorMacAddress: "1122334455667788",
       eventType: "motion_detected",
     });
   assert.equal(preConfirmEventResponse.status, 409);
@@ -178,7 +180,7 @@ test("user can onboard a hub over BLE setup, pair a door sensor through the hub 
     .set("x-hub-mac-address", "AA:BB:CC:DD:EE:FF")
     .set("x-hub-secret", currentHub!.deviceSecret)
     .send({
-      sensorMacAddress: "11:22:33:44:55:66",
+      sensorMacAddress: "1122334455667788",
     });
   assert.equal(confirmSensorResponse.status, 200);
   assert.equal(confirmSensorResponse.body.paired, true);
@@ -189,7 +191,7 @@ test("user can onboard a hub over BLE setup, pair a door sensor through the hub 
     .set("x-hub-mac-address", "AA:BB:CC:DD:EE:FF")
     .set("x-hub-secret", currentHub!.deviceSecret)
     .send({
-      sensorMacAddress: "11:22:33:44:55:66",
+      sensorMacAddress: "1122334455667788",
       eventType: "door_opened",
       payload: {
         module: "magnetic_reed",
@@ -200,6 +202,7 @@ test("user can onboard a hub over BLE setup, pair a door sensor through the hub 
   assert.equal(finalEventResponse.body.notification.eventType, "door_opened");
   assert.equal(finalEventResponse.body.notification.title, "Door opened");
   assert.equal(finalEventResponse.body.notification.severity, "critical");
+  assert.equal(finalEventResponse.body.notification.sensor.identifierType, "eui64");
 
   const shockEventResponse = await request(app)
     .post("/api/device/hubs/events")
@@ -207,7 +210,7 @@ test("user can onboard a hub over BLE setup, pair a door sensor through the hub 
     .set("x-hub-mac-address", "AA:BB:CC:DD:EE:FF")
     .set("x-hub-secret", currentHub!.deviceSecret)
     .send({
-      sensorMacAddress: "11:22:33:44:55:66",
+      sensorMacAddress: "1122334455667788",
       eventType: "shock_detected",
       payload: {
         module: "vibration",

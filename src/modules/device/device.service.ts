@@ -225,7 +225,7 @@ export class DeviceService {
 
     const populatedNotification = await NotificationModel.findById(notification._id)
       .populate("hub", "name macAddress")
-      .populate("sensor", "name macAddress type zone");
+      .populate("sensor", "name macAddress identifierType type zone");
 
     this.notificationService.publishRealtime(populatedNotification);
 

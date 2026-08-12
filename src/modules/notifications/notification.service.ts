@@ -14,7 +14,7 @@ export class NotificationService {
   async listForUser(userId: string | Types.ObjectId): Promise<NotificationDto[]> {
     const notifications = await NotificationModel.find({ user: userId })
       .populate("hub", "name macAddress")
-      .populate("sensor", "name macAddress type zone")
+      .populate("sensor", "name macAddress identifierType type zone")
       .sort({ createdAt: -1 });
 
     return notifications.map((notification) => this.serialize(notification));
@@ -23,7 +23,7 @@ export class NotificationService {
   async markAsRead(userId: string | Types.ObjectId, notificationId: string): Promise<NotificationDto> {
     const notification = await NotificationModel.findOne({ _id: notificationId, user: userId })
       .populate("hub", "name macAddress")
-      .populate("sensor", "name macAddress type zone");
+      .populate("sensor", "name macAddress identifierType type zone");
 
     if (!notification) {
       throw new ApiError(404, "Notification not found");
@@ -167,6 +167,14 @@ export class NotificationService {
       userId: notification.user.toString ? notification.user.toString() : String(notification.user),
       hubId: notification.hub?._id ? String(notification.hub._id) : String(notification.hub),
       sensorId: notification.sensor ? (notification.sensor._id ? String(notification.sensor._id) : String(notification.sensor)) : null,
+      sensor: notification.sensor && notification.sensor._id ? {
+        id: String(notification.sensor._id),
+        name: notification.sensor.name,
+        macAddress: notification.sensor.macAddress,
+        identifierType: notification.sensor.identifierType ?? "mac",
+        type: notification.sensor.type,
+        zone: notification.sensor.zone,
+      } : null,
       eventType: notification.eventType,
       severity: notification.severity,
       title: notification.title,

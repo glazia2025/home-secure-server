@@ -22,6 +22,7 @@ export interface SensorDto {
   id: string;
   hubId: string;
   macAddress: string;
+  identifierType: "mac" | "eui64";
   name: string;
   type: string;
   zone: string;

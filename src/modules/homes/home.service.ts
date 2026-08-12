@@ -227,7 +227,12 @@ export class HomeService {
       id: string;
     };
 
+    const rawSensorIdentifier = String(payload.sensorMacAddress || "")
+      .trim()
+      .toUpperCase()
+      .replace(/[^A-F0-9]/g, "");
     const sensorMacAddress = normalizeMacAddress(payload.sensorMacAddress);
+    const identifierType = rawSensorIdentifier.length === 16 ? "eui64" : "mac";
     const existingSensor = await SensorModel.findOne({
       macAddress: sensorMacAddress,
     });
@@ -250,7 +255,12 @@ export class HomeService {
 
     const sensor =
       existingSensor ??
-      new SensorModel({ macAddress: sensorMacAddress, hub: hub._id });
+      new SensorModel({
+        macAddress: sensorMacAddress,
+        identifierType,
+        hub: hub._id,
+      });
+    sensor.identifierType = identifierType;
     sensor.name =
       payload.name || sensor.name || `Sensor ${sensorMacAddress.slice(-5)}`;
     sensor.type = payload.type || sensor.type || "contact";
@@ -498,6 +508,7 @@ export class HomeService {
       id: sensor.id || String(sensor._id),
       hubId: sensor.hub.toString(),
       macAddress: sensor.macAddress,
+      identifierType: sensor.identifierType ?? "mac",
       name: sensor.name,
       type: sensor.type,
       zone: sensor.zone,

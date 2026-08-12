@@ -3,6 +3,7 @@ import { HydratedDocument, Model, Schema, Types, model } from "mongoose";
 export interface ISensor {
   hub: Types.ObjectId;
   macAddress: string;
+  identifierType: "mac" | "eui64";
   name: string;
   type: string;
   zone: string;
@@ -23,6 +24,7 @@ const sensorSchema = new Schema<ISensor>(
   {
     hub: { type: Schema.Types.ObjectId, ref: "Hub", required: true, index: true },
     macAddress: { type: String, required: true, unique: true, index: true },
+    identifierType: { type: String, enum: ["mac", "eui64"], default: "mac" },
     name: { type: String, required: true, trim: true },
     type: { type: String, required: true, trim: true },
     zone: { type: String, default: "", trim: true },

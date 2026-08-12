@@ -3,6 +3,14 @@ export interface NotificationDto {
   userId: string;
   hubId: string;
   sensorId: string | null;
+  sensor: {
+    id: string;
+    name: string;
+    macAddress: string;
+    identifierType: "mac" | "eui64";
+    type: string;
+    zone: string;
+  } | null;
   eventType: string;
   severity: string;
   title: string;
