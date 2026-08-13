@@ -59,7 +59,7 @@ export class DeviceService {
 
     const { macAddress: sensorMacAddress } = sensor;
 
-    return { sensorMacAddress, pskd: sensor.cc };
+    return { sensorMacAddress, provisionKey: sensor.cc };
   }
 
   async confirmSensorPairing(payload: ConfirmSensorPairingInput) {
