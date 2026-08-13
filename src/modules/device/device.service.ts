@@ -1,6 +1,6 @@
 import { Types } from "mongoose";
 import { ApiError } from "../../common/errors/api-error";
-import { normalizeMacAddress } from "../../common/utils/mac-address";
+import { normalizeEui64, normalizeMacAddress } from "../../common/utils/mac-address";
 import { ActivityLogModel } from "../activity/activity-log.model";
 import { CameraRelay } from "../camera/camera-relay";
 import { HubModel } from "../hubs/hub.model";
@@ -49,26 +49,22 @@ export class DeviceService {
     if (!hub) throw new ApiError(404, "Hub not found");
     if (hub.deviceSecret !== hubSecret) throw new ApiError(401, "Invalid hub secret");
 
-    // Find the oldest sensor for this hub that still has an undelivered provision key
     const sensor = await SensorModel.findOne({
       hub: hub._id,
-      provisionKey: { $ne: null },
+      status: "provisioning",
+      cc: { $ne: "" },
     }).sort({ createdAt: 1 });
 
     if (!sensor) throw new ApiError(404, "No pending sensor pairing for this hub");
 
-    const { macAddress: sensorMacAddress, provisionKey } = sensor;
+    const { macAddress: sensorMacAddress } = sensor;
 
-    // One-time delivery — clear the key so a second fetch returns nothing
-    sensor.provisionKey = null;
-    await sensor.save();
-
-    return { sensorMacAddress, provisionKey };
+    return { sensorMacAddress, pskd: sensor.cc };
   }
 
   async confirmSensorPairing(payload: ConfirmSensorPairingInput) {
     const hub = await this.authenticateHub(payload);
-    const sensorMacAddress = normalizeMacAddress(payload.sensorMacAddress);
+    const sensorMacAddress = normalizeEui64(payload.sensorMacAddress);
 
     const sensor = await SensorModel.findOne({
       hub: hub._id,
@@ -80,7 +76,6 @@ export class DeviceService {
 
     const wasProvisioning = sensor.status === "provisioning";
     sensor.status = "paired";
-    sensor.provisionKey = null;
     sensor.lastActivityAt = new Date();
     await sensor.save();
 
@@ -161,7 +156,7 @@ export class DeviceService {
 
   async ingestHubEvent(payload: DeviceEventInput): Promise<{ activityLogId: string; notification: ReturnType<NotificationService["serialize"]> }> {
     const hubMacAddress = normalizeMacAddress(payload.hubMacAddress);
-    const sensorMacAddress = payload.sensorMacAddress ? normalizeMacAddress(payload.sensorMacAddress) : null;
+    const sensorMacAddress = payload.sensorMacAddress ? normalizeEui64(payload.sensorMacAddress) : null;
     const hubSecret = String(payload.hubSecret || "");
 
     const hub = await HubModel.findOne({ macAddress: hubMacAddress });
@@ -225,7 +220,7 @@ export class DeviceService {
 
     const populatedNotification = await NotificationModel.findById(notification._id)
       .populate("hub", "name macAddress")
-      .populate("sensor", "name macAddress identifierType type zone");
+      .populate("sensor", "name macAddress type zone");
 
     this.notificationService.publishRealtime(populatedNotification);
 

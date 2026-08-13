@@ -2,7 +2,7 @@ import crypto from "crypto";
 import { Types } from "mongoose";
 import { AppConfig } from "../../config/env";
 import { ApiError } from "../../common/errors/api-error";
-import { normalizeMacAddress } from "../../common/utils/mac-address";
+import { normalizeEui64, normalizeMacAddress } from "../../common/utils/mac-address";
 import { ActivityLogModel } from "../activity/activity-log.model";
 import { HubModel, IHub } from "../hubs/hub.model";
 import { SensorModel, ISensor } from "../sensors/sensor.model";
@@ -227,12 +227,16 @@ export class HomeService {
       id: string;
     };
 
-    const rawSensorIdentifier = String(payload.sensorMacAddress || "")
-      .trim()
-      .toUpperCase()
-      .replace(/[^A-F0-9]/g, "");
-    const sensorMacAddress = normalizeMacAddress(payload.sensorMacAddress);
-    const identifierType = rawSensorIdentifier.length === 16 ? "eui64" : "mac";
+    const eui = normalizeEui64(payload.eui);
+    const cc = String(payload.cc || "").trim().toUpperCase();
+    const v = String(payload.v || "").trim();
+    if (!/^[A-Z0-9]{6,32}$/.test(cc)) {
+      throw new ApiError(400, "Invalid Thread commissioning credential (cc)");
+    }
+    if (!/^\d+$/.test(v)) {
+      throw new ApiError(400, "Invalid Thread version (v)");
+    }
+    const sensorMacAddress = eui;
     const existingSensor = await SensorModel.findOne({
       macAddress: sensorMacAddress,
     });
@@ -257,22 +261,21 @@ export class HomeService {
       existingSensor ??
       new SensorModel({
         macAddress: sensorMacAddress,
-        identifierType,
+        eui,
+        cc,
+        v,
         hub: hub._id,
       });
-    sensor.identifierType = identifierType;
+    sensor.eui = eui;
+    sensor.cc = cc;
+    sensor.v = v;
     sensor.name =
       payload.name || sensor.name || `Sensor ${sensorMacAddress.slice(-5)}`;
     sensor.type = payload.type || sensor.type || "contact";
     sensor.zone = payload.zone || sensor.zone || "";
     sensor.hardwareModel =
-      payload.hardwareModel || sensor.hardwareModel || "ESP32-C3 Mini";
+      payload.hardwareModel || sensor.hardwareModel || "nRF52840";
 
-    // Generate a 16-byte provision key (= ESP-NOW LMK).
-    // Returned to the phone so it can push the key to the sensor over BLE.
-    // Cleared on the server once the hub has fetched it (one-time delivery).
-    const provisionKey = crypto.randomBytes(16).toString("hex");
-    sensor.provisionKey = provisionKey;
     sensor.provisioning = {
       hubMacAddress: hub.macAddress,
       sensorMacAddress,
@@ -508,7 +511,9 @@ export class HomeService {
       id: sensor.id || String(sensor._id),
       hubId: sensor.hub.toString(),
       macAddress: sensor.macAddress,
-      identifierType: sensor.identifierType ?? "mac",
+      eui: sensor.eui,
+      cc: sensor.cc,
+      v: sensor.v,
       name: sensor.name,
       type: sensor.type,
       zone: sensor.zone,
@@ -518,7 +523,6 @@ export class HomeService {
       provisioning: {
         hubMacAddress: sensor.provisioning.hubMacAddress,
         sensorMacAddress: sensor.provisioning.sensorMacAddress,
-        provisionKey: sensor.provisionKey ?? null,
         sharedAt: sensor.provisioning.sharedAt,
       },
       createdAt: sensor.createdAt,

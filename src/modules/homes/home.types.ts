@@ -11,7 +11,9 @@ export interface CompleteHubRegistrationInput {
 }
 
 export interface PairHomeSensorInput {
-  sensorMacAddress: string;
+  eui: string;
+  cc: string;
+  v: string;
   name?: string;
   type?: string;
   zone?: string;
@@ -22,7 +24,9 @@ export interface SensorDto {
   id: string;
   hubId: string;
   macAddress: string;
-  identifierType: "mac" | "eui64";
+  eui: string;
+  cc: string;
+  v: string;
   name: string;
   type: string;
   zone: string;
@@ -32,7 +36,6 @@ export interface SensorDto {
   provisioning: {
     hubMacAddress: string;
     sensorMacAddress: string;
-    provisionKey: string | null;   // present only once (cleared after hub fetches it)
     sharedAt: Date;
   };
   createdAt: Date;

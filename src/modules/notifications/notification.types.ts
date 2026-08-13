@@ -7,7 +7,6 @@ export interface NotificationDto {
     id: string;
     name: string;
     macAddress: string;
-    identifierType: "mac" | "eui64";
     type: string;
     zone: string;
   } | null;

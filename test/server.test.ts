@@ -139,14 +139,18 @@ test("user can onboard a hub over BLE setup, pair a door sensor through the hub 
     .post(`/api/homes/${homeId}/sensors/pair`)
     .set("Authorization", `Bearer ${token}`)
     .send({
-      sensorMacAddress: "1122334455667788",
+      eui: "1122334455667788",
+      cc: "B7BB1907",
+      v: "1",
       name: "Front Door Frame Sensor",
       type: "contact",
       zone: "Front Door Frame",
     });
   assert.equal(sensorClaimResponse.status, 201);
   assert.equal(sensorClaimResponse.body.sensor.macAddress, "1122334455667788");
-  assert.equal(sensorClaimResponse.body.sensor.identifierType, "eui64");
+  assert.equal(sensorClaimResponse.body.sensor.eui, "1122334455667788");
+  assert.equal(sensorClaimResponse.body.sensor.cc, "B7BB1907");
+  assert.equal(sensorClaimResponse.body.sensor.v, "1");
   assert.equal(sensorClaimResponse.body.provisioning.sensor.targetHubMacAddress, "AA:BB:CC:DD:EE:FF");
 
   const pendingHomeDetailsResponse = await request(app)
@@ -162,6 +166,17 @@ test("user can onboard a hub over BLE setup, pair a door sensor through the hub 
     .set("x-hub-secret", currentHub!.deviceSecret);
   assert.equal(pendingHubSensorsResponse.status, 200);
   assert.equal(pendingHubSensorsResponse.body.sensors.length, 0);
+
+  const pendingSensorResponse = await request(app)
+    .get("/api/device/hubs/pending-sensor")
+    .set("x-device-api-key", "device-test-key")
+    .set("x-hub-mac-address", "AA:BB:CC:DD:EE:FF")
+    .set("x-hub-secret", currentHub!.deviceSecret);
+  assert.equal(pendingSensorResponse.status, 200);
+  assert.deepEqual(pendingSensorResponse.body, {
+    sensorMacAddress: "1122334455667788",
+    pskd: "B7BB1907",
+  });
 
   const preConfirmEventResponse = await request(app)
     .post("/api/device/hubs/events")
@@ -202,7 +217,6 @@ test("user can onboard a hub over BLE setup, pair a door sensor through the hub 
   assert.equal(finalEventResponse.body.notification.eventType, "door_opened");
   assert.equal(finalEventResponse.body.notification.title, "Door opened");
   assert.equal(finalEventResponse.body.notification.severity, "critical");
-  assert.equal(finalEventResponse.body.notification.sensor.identifierType, "eui64");
 
   const shockEventResponse = await request(app)
     .post("/api/device/hubs/events")
@@ -418,7 +432,9 @@ test("deleting sensors and hubs sends cleanup commands over hub WebSocket", asyn
     .post(`/api/homes/${homeId}/sensors/pair`)
     .set("Authorization", `Bearer ${token}`)
     .send({
-      sensorMacAddress: "11:22:33:44:55:77",
+      eui: "1122334455667777",
+      cc: "44556677",
+      v: "1",
       name: "Balcony Sensor",
       type: "contact",
       zone: "Balcony",
@@ -431,7 +447,7 @@ test("deleting sensors and hubs sends cleanup commands over hub WebSocket", asyn
     .set("x-device-api-key", "device-test-key")
     .set("x-hub-mac-address", "AA:BB:CC:DD:EE:40")
     .set("x-hub-secret", hubSecret)
-    .send({ sensorMacAddress: "11:22:33:44:55:77" });
+    .send({ sensorMacAddress: "1122334455667777" });
   assert.equal(confirmResponse.status, 200);
 
   const ws = openHubControlSocket("AA:BB:CC:DD:EE:40", hubSecret);
@@ -449,7 +465,7 @@ test("deleting sensors and hubs sends cleanup commands over hub WebSocket", asyn
 
     const sensorDeleteCommand = await sensorDeletePromise;
     assert.equal(sensorDeleteCommand.type, "sensor_delete_command");
-    assert.equal(sensorDeleteCommand.sensorMacAddress, "11:22:33:44:55:77");
+    assert.equal(sensorDeleteCommand.sensorMacAddress, "1122334455667777");
 
     const hubResetPromise = nextWsJsonOfType(ws, "hub_reset_command");
     const deleteHubResponse = await request(app)
@@ -480,7 +496,9 @@ test("sensor manual toggle sends enable and disable commands over hub WebSocket"
     .post(`/api/homes/${homeId}/sensors/pair`)
     .set("Authorization", `Bearer ${token}`)
     .send({
-      sensorMacAddress: "11:22:33:44:55:45",
+      eui: "1122334455667745",
+      cc: "44556645",
+      v: "1",
       name: "Bedroom Sensor",
       type: "contact",
       zone: "Bedroom",
@@ -493,7 +511,7 @@ test("sensor manual toggle sends enable and disable commands over hub WebSocket"
     .set("x-device-api-key", "device-test-key")
     .set("x-hub-mac-address", "AA:BB:CC:DD:EE:45")
     .set("x-hub-secret", hubSecret)
-    .send({ sensorMacAddress: "11:22:33:44:55:45" });
+    .send({ sensorMacAddress: "1122334455667745" });
   assert.equal(confirmResponse.status, 200);
 
   const ws = openHubControlSocket("AA:BB:CC:DD:EE:45", hubSecret);
@@ -509,7 +527,7 @@ test("sensor manual toggle sends enable and disable commands over hub WebSocket"
     assert.equal(disableResponse.body.commandSent, true);
 
     const disableCommand = await disablePromise;
-    assert.equal(disableCommand.sensorMacAddress, "11:22:33:44:55:45");
+    assert.equal(disableCommand.sensorMacAddress, "1122334455667745");
     assert.equal(disableCommand.enabled, false);
     assert.equal(disableCommand.action, "disable");
 
@@ -522,7 +540,7 @@ test("sensor manual toggle sends enable and disable commands over hub WebSocket"
     assert.equal(enableResponse.body.commandSent, true);
 
     const enableCommand = await enablePromise;
-    assert.equal(enableCommand.sensorMacAddress, "11:22:33:44:55:45");
+    assert.equal(enableCommand.sensorMacAddress, "1122334455667745");
     assert.equal(enableCommand.enabled, true);
     assert.equal(enableCommand.action, "enable");
   } finally {
@@ -541,7 +559,9 @@ test("hub control WebSocket events create user notifications", async () => {
     .post(`/api/homes/${homeId}/sensors/pair`)
     .set("Authorization", `Bearer ${token}`)
     .send({
-      sensorMacAddress: "11:22:33:44:55:88",
+      eui: "1122334455667788",
+      cc: "44556688",
+      v: "1",
       name: "Main Door Sensor",
       type: "contact",
       zone: "Main Door",
@@ -553,7 +573,7 @@ test("hub control WebSocket events create user notifications", async () => {
     .set("x-device-api-key", "device-test-key")
     .set("x-hub-mac-address", "AA:BB:CC:DD:EE:55")
     .set("x-hub-secret", hubSecret)
-    .send({ sensorMacAddress: "11:22:33:44:55:88" });
+    .send({ sensorMacAddress: "1122334455667788" });
   assert.equal(confirmResponse.status, 200);
 
   const ws = openHubControlSocket("AA:BB:CC:DD:EE:55", hubSecret);
@@ -563,7 +583,7 @@ test("hub control WebSocket events create user notifications", async () => {
     ws.send(JSON.stringify({
       type: "sensor_event",
       eventType: "door_opened",
-      sensorMacAddress: "11:22:33:44:55:88",
+      sensorMacAddress: "1122334455667788",
       payload: { reedState: "open" },
     }));
 

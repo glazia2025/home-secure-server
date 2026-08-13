@@ -3,13 +3,14 @@ import { HydratedDocument, Model, Schema, Types, model } from "mongoose";
 export interface ISensor {
   hub: Types.ObjectId;
   macAddress: string;
-  identifierType: "mac" | "eui64";
+  eui: string;
+  cc: string;
+  v: string;
   name: string;
   type: string;
   zone: string;
   hardwareModel: string;
   status: "provisioning" | "paired" | "offline" | "online";
-  provisionKey: string | null;   // 32-char hex (16 bytes); cleared once hub fetches it
   provisioning: {
     hubMacAddress: string;
     sensorMacAddress: string;
@@ -24,13 +25,14 @@ const sensorSchema = new Schema<ISensor>(
   {
     hub: { type: Schema.Types.ObjectId, ref: "Hub", required: true, index: true },
     macAddress: { type: String, required: true, unique: true, index: true },
-    identifierType: { type: String, enum: ["mac", "eui64"], default: "mac" },
+    eui: { type: String, required: true, unique: true, index: true },
+    cc: { type: String, required: true },
+    v: { type: String, required: true },
     name: { type: String, required: true, trim: true },
     type: { type: String, required: true, trim: true },
     zone: { type: String, default: "", trim: true },
-    hardwareModel: { type: String, default: "ESP32-C3 Mini" },
+    hardwareModel: { type: String, default: "nRF52840" },
     status: { type: String, enum: ["provisioning", "paired", "offline", "online"], default: "provisioning" },
-    provisionKey: { type: String, default: null },
     provisioning: {
       hubMacAddress: { type: String, required: true },
       sensorMacAddress: { type: String, required: true },
