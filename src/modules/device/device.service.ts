@@ -261,6 +261,13 @@ export class DeviceService {
       };
     }
 
+    if (payload.eventType === "sensor_offline") {
+      return {
+        title: "Sensor offline",
+        message: `${sensorLabel} stopped responding — it may have lost power or moved out of range.`,
+      };
+    }
+
     return {
       title: `${payload.hubName}: ${payload.eventType}`,
       message: payload.sensorName

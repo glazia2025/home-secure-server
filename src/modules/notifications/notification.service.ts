@@ -6,7 +6,7 @@ import { PushNotificationService } from "../push-notifications/push-notification
 import { NotificationModel } from "./notification.model";
 import { NotificationDto } from "./notification.types";
 
-const PUSH_ENABLED_EVENT_TYPES = new Set(["door_opened", "shock_detected"]);
+const PUSH_ENABLED_EVENT_TYPES = new Set(["door_opened", "shock_detected", "sensor_offline"]);
 
 export class NotificationService {
   constructor(private readonly pushNotificationService?: PushNotificationService) {}
